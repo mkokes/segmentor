@@ -7,7 +7,7 @@ See [PLAN.md](PLAN.md) for the complete specification, geometry math, data model
 ## Stack
 
 - React 19 + TypeScript + Vite
-- Tailwind CSS v4 + DaisyUI 5 (themed via `styleguide/` from `mk-styleguide`)
+- **Would? By Marty** warm workshop theme (Cream & Oak light / Walnut dark, `Chango` + `Fraunces` + `Montserrat` + `JetBrains Mono`)
 - Three.js (live 3D vessel preview)
 - Vitest (geometry & unit verification)
 - `vite-plugin-pwa` (installable offline shop app)

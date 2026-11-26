@@ -258,15 +258,41 @@ Navigation uses a compact, mobile-friendly top/bottom bar so all 5 workspace vie
 
 ---
 
-## 5. Design System & Styling
+## 5. Design System & Styling (`wouldbymarty` Warm Workshop Theme)
 
-- Follows `styleguide/` (vendored unchanged from `mkokes/mk-styleguide`) + Tailwind CSS v4 + DaisyUI 5 (`mk` theme).
-- **Color rules:**
-  - Semantic tokens only (`bg-bg`, `bg-surface`, `text-text`, `text-text-muted`, `border-border`, `text-link`, `bg-primary`, `text-on-primary`, `text-warning`, `text-danger`, `text-success`).
-  - Never use `text-primary` on light backgrounds; use `text-link`.
-  - Respect `<html data-theme="light|dark">` with OS preference fallback.
-  - `@media print` forces light mode (`#ffffff` paper, high-contrast black lines) regardless of active UI theme.
-- **Typography:** Poppins for headings, Inter for UI copy, **JetBrains Mono** (`tabular-nums`) for all angles, lengths, fractions, and cut tables.
+Matches the **Would? By Marty** visual identity (`mkokes/wouldbymarty`): Cream & Oak in light mode, Walnut in dark mode, with tactile paper/wood-grain texture.
+
+### 5.1 Color Tokens (`src/styles/tokens.css`)
+- **Light Mode (Cream & Oak):**
+  - `--bg: #f6efe4` (page canvas)
+  - `--bg-alt: #efe4d3` (recessed panels, footer)
+  - `--surface: #fbf7f0` (cards, inspector drawers, cut-sheet rows)
+  - `--text: #2a1d15` / `--text-muted: #6a5545`
+  - `--accent: #c8843e` / `--accent-hover: #b47333` / `--on-accent: #24170f`
+  - `--link: #8f5420`
+  - `--border: #e2d3be`
+  - `--shadow: 0 18px 40px -24px rgba(58, 36, 20, 0.45)`
+- **Dark Mode (Walnut):**
+  - `--bg: #1c1410` / `--bg-alt: #241a14` / `--surface: #2c2019`
+  - `--text: #f3e9dc` / `--text-muted: #c4af9a`
+  - `--accent: #d9a066` / `--accent-hover: #e4b07a` / `--on-accent: #24170f`
+  - `--link: #e7b57e`
+  - `--border: #3d2d22`
+  - `--shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.8)`
+- **Shop Diagnostics (WCAG AA on `--bg` / `--surface`):**
+  - `--status-safe`: `#2d6a3e` (light) / `#6ec284` (dark)
+  - `--status-warn`: `#a85d12` (light) / `#eab062` (dark)
+  - `--status-danger`: `#a82c24` (light) / `#f07b72` (dark)
+
+### 5.2 Typography, Texture & Theme Behavior
+- **Fonts:**
+  - `--font-display: 'Chango', sans-serif` — app wordmark
+  - `--font-serif: 'Fraunces', Georgia, serif` — view & section headings
+  - `--font-body: 'Montserrat', system-ui, sans-serif` — UI labels, descriptions, controls
+  - `--font-mono: 'JetBrains Mono', monospace` (`font-variant-numeric: tabular-nums`) — cut tables, angles, fractions, and dimensions
+- **Subtle Wood/Paper Grain:** Fixed `body::after` fractal-noise SVG overlay (`pointer-events: none`, `--grain-opacity: 0.06` light / `0.08` dark), disabled inside `@media print`.
+- **3-Way Theme Toggle (`system` / `light` / `dark`):** Persisted in `localStorage` (`segmentor-theme`), applied before first paint via an inline `<script>` in `index.html` (`data-theme` on `<html>`), and synced with `<meta name="theme-color">` (`#F6EFE4` / `#1C1410`).
+- **Print Override (`@media print`):** Forces `#ffffff` paper background, `#111111` ink, hides grain overlay and chrome, and preserves `1 SVG unit = 1 inch` physical scaling for 1:1 story-stick templates.
 
 ---
 
@@ -278,7 +304,6 @@ segmentor/
 ├── .husky/pre-push                # Runs `npm run check`
 ├── .oxfmtrc.json                  # Formatting rules (singleQuote, semicolons, LF)
 ├── .oxlintrc.json                 # Lint rules (ts, react, oxc, unicorn, vitest)
-├── styleguide/                    # Vendored mk-styleguide (do not edit directly)
 ├── public/                        # PWA icons & manifest assets
 ├── src/
 │   ├── geometry/
@@ -292,6 +317,8 @@ segmentor/
 │   ├── data/
 │   │   ├── presets.ts             # Built-in bowl, vase, open-segment, stave presets
 │   │   └── species.ts             # Default hardwood species palette (Walnut, Maple, Cherry...)
+│   ├── lib/
+│   │   └── theme.ts               # 3-way system/light/dark store (wouldbymarty pattern)
 │   ├── types/
 │   │   └── vessel.ts              # Canonical project & geometry types
 │   ├── state/
@@ -303,8 +330,8 @@ segmentor/
 │   │   ├── CutSheetView.tsx       # View 4: Cut tables, species summary, CSV export
 │   │   ├── ShopModeView.tsx       # View 5: Ring checklist + 1:1 tiled story-stick print
 │   │   └── common/                # UnitBadge, ThemeToggle, ProjectMenu, Tooltip
+│   ├── styles.css                 # WouldByMarty warm workshop tokens, grain & print CSS
 │   ├── App.tsx
-│   ├── index.css
 │   └── main.tsx
 ├── PLAN.md
 ├── AGENTS.md
@@ -325,7 +352,7 @@ segmentor/
 ### Phase 1 — Week 1 MVP (End-to-End Core Loop)
 
 - **M1: Project Bootstrap & Math Kernel**
-  - Scaffold Vite + React 19 + TS + Tailwind v4 + DaisyUI 5 + `mk-styleguide` + PWA + Vitest + oxlint/oxfmt.
+  - Scaffold Vite + React 19 + TS + Tailwind v4 (or custom CSS tokens) + `wouldbymarty` warm workshop theme + PWA + Vitest + oxlint/oxfmt.
   - Implement `units.ts`, `spline.ts`, `closedRing.ts`, `openRing.ts`, `stave.ts`, `speciesSummary.ts` with 100% unit test coverage on boundary cases ($\phi = 0^\circ$, $\phi = 90^\circ$, open-segment gap limits, zero/negative overlap detection, kerf flip-cut verification).
 - **M2: State, Presets & Profile Editor (View 1)**
   - Implement `useVesselStore.ts` (`localStorage` auto-save + `.segmentor.json` export/import).
