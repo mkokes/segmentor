@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Segmentor — Woodturning Studio</title>
+    <meta
+      name="description"
+      content="Shop-ready studio for closed-segment, open-segment, and stave woodturned bowls and vases."
+    />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6EFE4" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1C1410" />
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        root.classList.add('js');
+        try {
+          var theme = localStorage.getItem('segmentor-theme');
+          if (theme === 'light' || theme === 'dark') {
+            root.dataset.theme = theme;
+            var color = theme === 'dark' ? '#1C1410' : '#F6EFE4';
+            document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
+              meta.content = color;
+            });
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Chango&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400&family=JetBrains+Mono:wght@400;500;600&family=Montserrat:wght@400;500;600&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

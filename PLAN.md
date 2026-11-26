@@ -7,13 +7,16 @@
 ## 1. Vision & Product Principles
 
 ### 1.1 One-Liner
+
 Design a segmented or stave woodturned vessel visually—closed-ring, open-ring, or stave—verify wall safety and glue-joint overlap in 2D and 3D, and export a kerf-accurate cut sheet, shop checklist, and 1:1 printable story-stick template.
 
 ### 1.2 Target Users
+
 - **Hobbyist & intermediate woodturners** moving beyond basic solid blanks into segmented bowls, hollow forms, and vases.
 - **Shop-floor makers** on phones, tablets, or garage laptops who need offline-capable, touch-friendly tools instead of legacy Windows-only desktop programs.
 
 ### 1.3 Core Principles
+
 1. **Math correctness first.** Every miter angle, bevel, segment edge length (SEL), radial width, overlap margin, and kerf-compensated strip length lives in a pure, unit-tested TypeScript geometry engine (`src/geometry/`).
 2. **Prevent shop disasters before cutting.** Detect insufficient ring-to-ring overlap, thin walls, and excessive stave sagitta (chord thinning) live while dragging the profile.
 3. **Shop-floor ergonomics.** High-contrast typography, persistent dark/light themes, large tap targets for Shop Mode, dual units (`in` decimal/fractional and `mm`), and offline PWA support.
@@ -26,6 +29,7 @@ Design a segmented or stave woodturned vessel visually—closed-ring, open-ring,
 All internal calculations operate in **canonical inches** (`number`), converted at UI boundaries for display (`in` decimal, `in` nearest 1/16" or 1/32" fraction, or `mm`).
 
 ### 2.1 Vessel Profile Coordinate System
+
 - Vertical axis $y \in [0, H]$, where $y = 0$ is the lathe chuck/foot bottom and $y = H$ is the rim.
 - Outer contour $R_{\text{outer}}(y)$ defined by a piecewise cubic Bezier spline (user-editable anchor points + tangent handles, with optional snap-to-grid).
 - Inner contour $R_{\text{inner}}(y)$ derived automatically by offsetting $R_{\text{outer}}(y)$ inward along the curve normal by wall thickness $t_{\text{wall}}$ (with configurable floor thickness $t_{\text{base}}$ at $y = 0$), **or** independently editable for thick-walled/hollow forms.
@@ -40,24 +44,28 @@ The vessel height $H$ is partitioned into $M$ stacked horizontal rings $k = 1 \d
 Each ring $k$ occupies $[y_{k,\text{bot}}, y_{k,\text{top}}]$ with ring thickness $h_k = y_{k,\text{top}} - y_{k,\text{bot}}$ and segment count $N_k \ge 3$ (common presets: `8, 12, 16, 18, 24, 32, 36`).
 
 #### Ring Envelope (Critical for Preventing Blow-Through)
+
 Because the vessel profile curves across height $h_k$:
+
 - Finished outer max radius on ring $k$: $R_{o,\text{fin}} = \max_{y \in [y_{k,\text{bot}}, y_{k,\text{top}}]} R_{\text{outer}}(y)$
 - Finished inner min radius on ring $k$: $R_{i,\text{fin}} = \min_{y \in [y_{k,\text{bot}}, y_{k,\text{top}}]} R_{\text{inner}}(y)$
 - Rough glue-up outer radius: $R_{o,k} = R_{o,\text{fin}} + \Delta_{\text{out}}$
 - Rough glue-up inner radius (inscribed circle of inner polygon): $R_{i,k} = \max(0, R_{i,\text{fin}} - \Delta_{\text{in}})$
 
 #### Segment Cut Formulas (Closed Ring)
+
 Let half-sector angle $\theta_k = \frac{\pi}{N_k}$ (in degrees: $\theta_{m,k} = \frac{180^\circ}{N_k}$):
+
 - **Miter angle (per end):** $\theta_{m,k} = \frac{180^\circ}{N_k}$
 - **Circumscribed outer radius** (polygon vertices): $R_{o,\text{vert},k} = \frac{R_{o,k}}{\cos(\theta_k)}$
-  - *Note:* Defining $R_{o,k}$ as the flat-to-flat *inscribed* outer radius ensures the flat face never dips inside the turning envelope, while the polygon corners protrude out to $R_{o,\text{vert},k}$.
+  - _Note:_ Defining $R_{o,k}$ as the flat-to-flat _inscribed_ outer radius ensures the flat face never dips inside the turning envelope, while the polygon corners protrude out to $R_{o,\text{vert},k}$.
 - **Segment Edge Length (SEL, outer chord of trapezoid):**
   $$\text{SEL}_k = 2 \cdot R_{o,k} \cdot \tan(\theta_k)$$
 - **Inner Edge Length (IEL, inner chord of trapezoid):**
   $$\text{IEL}_k = 2 \cdot R_{i,k} \cdot \tan(\theta_k)$$
 - **Radial Strip Width ($W_k$, fence width on table saw):**
   $$W_k = R_{o,k} - R_{i,k}$$
-  *(Exact perpendicular height of the trapezoid between outer face and inner face when both radii are measured to the flat faces.)*
+  _(Exact perpendicular height of the trapezoid between outer face and inner face when both radii are measured to the flat faces.)_
 - **Ring-to-Ring Glue Overlap Check:**
   Between adjacent rings $k$ and $k+1$, the radial glue contact width is:
   $$\text{Overlap}_{k,k+1} = \min(R_{o,k}, R_{o,k+1}) - \max(R_{i,k}, R_{i,k+1})$$
@@ -66,7 +74,9 @@ Let half-sector angle $\theta_k = \frac{\pi}{N_k}$ (in degrees: $\theta_{m,k} = 
   - **Error (Gap / Blow-through):** $\text{Overlap} \le 0$ (rings do not physically overlap; impossible to turn safely)
 
 #### Strip Length & Saw Kerf Compensation
+
 When cutting $N_k$ trapezoidal segments by flipping the strip $180^\circ$ after each cut on a miter sled (kerf $K$, miter angle $\theta_k$):
+
 - Kerf advance along the strip axis per cut: $K_{\text{axial}} = \frac{K}{\cos(\theta_k)}$
 - Average trapezoid pitch along the strip: $P_k = \frac{\text{SEL}_k + \text{IEL}_k}{2}$
 - **Minimum linear strip length** (including $N_k + 1$ cuts + configurable end-trim allowance $E_{\text{trim}}$, default $1.0"$):
@@ -80,14 +90,16 @@ When cutting $N_k$ trapezoidal segments by flipping the strip $180^\circ$ after 
 Open-segment rings leave intentional radial gaps between adjacent segments around the ring.
 
 #### Parameters per Ring
+
 - Segment count $N_k$
 - **Gap specification** (user picks one; the other derives live):
   - **Gap angle $\alpha_g$** (degrees per gap, e.g., $4^\circ$–$12^\circ$), OR
-  - **Open percentage $p_{\text{open}} \in (0\%, 70\%)$** where $\alpha_g = \frac{360^\circ}{N_k} \cdot p_{\text{open}}$
+  - **Open percentage $p\_{\text{open}} \in (0\%, 70\%)$** where $\alpha_g = \frac{360^\circ}{N_k} \cdot p_{\text{open}}$
 - Segment angular sweep: $\alpha_s = \frac{360^\circ}{N_k} - \alpha_g$
 - Half-segment angle: $\theta_{s,k} = \frac{\alpha_s}{2}$ (radians: $\frac{\pi}{180}\cdot\frac{\alpha_s}{2}$)
 
 #### Cut & Jig Formulas (Open Ring)
+
 - **Miter angle (per end of segment):** $\theta_{m,k} = \frac{\alpha_s}{2} = \frac{180^\circ}{N_k} - \frac{\alpha_g}{2}$
 - **Outer Segment Length (SEL):** $\text{SEL}_k = 2 \cdot R_{o,k} \cdot \tan(\theta_{s,k})$
 - **Inner Segment Length (IEL):** $\text{IEL}_k = 2 \cdot R_{i,k} \cdot \tan(\theta_{s,k})$
@@ -105,30 +117,34 @@ Open-segment rings leave intentional radial gaps between adjacent segments aroun
 Stave vessels are formed by $N$ long staves arranged around the axis, either as a **single frustum/barrel** or **stacked multi-tier stave sections** that follow a curved vase profile.
 
 #### Parameters per Stave Tier
+
 - Stave count $N \ge 3$ (half-sector $\theta = \frac{\pi}{N}$)
 - Tier bottom height $y_{\text{bot}}$, top height $y_{\text{top}}$, tier length along slope $L_{\text{stave}}$
 - Outer radius at bottom $R_{o,\text{bot}}$, at top $R_{o,\text{top}}$
 - **Slope / Tilt Angle $\phi$ from vertical:**
   $$\phi = \arctan\!\left(\frac{R_{o,\text{top}} - R_{o,\text{bot}}}{y_{\text{top}} - y_{\text{bot}}}\right)$$
-  *(Note: $\phi = 0^\circ$ is a vertical cylinder; $\phi > 0^\circ$ flares outward toward the rim; $\phi < 0^\circ$ tapers inward.)*
+  _(Note: $\phi = 0^\circ$ is a vertical cylinder; $\phi > 0^\circ$ flares outward toward the rim; $\phi < 0^\circ$ tapers inward.)_
 
 #### Compound Angle Formulas (Verified from Dihedral Geometry)
+
 For a regular $N$-sided polygonal frustum tilted at angle $\phi$ from vertical:
+
 - **Table Saw Blade Bevel Angle ($\beta$, tilt from $90^\circ$ vertical):**
   $$\beta = \arcsin\!\big(\cos(\phi) \cdot \sin(\theta)\big)$$
 - **Table Saw Miter Gauge Angle ($\gamma$, angle from $90^\circ$ perpendicular):**
   $$\gamma = \arctan\!\big(\sin(|\phi|) \cdot \tan(\theta)\big)$$
-  - *Boundary checks:*
+  - _Boundary checks:_
     - Vertical cylinder ($\phi = 0^\circ$): $\beta = \frac{180^\circ}{N}$, $\gamma = 0^\circ$ (pure rip bevel).
     - Flat horizontal ring ($\phi = 90^\circ$): $\beta = 0^\circ$, $\gamma = \frac{180^\circ}{N}$ (pure flat miter).
 
 #### Stave Sizing & Curve-Sagitta Check
+
 - **Outer stave width** at bottom/top:
   $$w_{\text{bot}} = 2 R_{o,\text{bot}} \tan(\theta), \qquad w_{\text{top}} = 2 R_{o,\text{top}} \tan(\theta)$$
-- **Required Stock Thickness ($T_{\text{stave}}$):**
+- **Required Stock Thickness ($T\_{\text{stave}}$):**
   Must accommodate wall thickness $t_{\text{wall}}$, turning allowances $\Delta_{\text{out}} + \Delta_{\text{in}}$, polygonal corner drop (sagitta $s = R_o(\sec\theta - 1)$), AND any **curved profile bulge** $b_{\max}$ where the vessel profile bows outside/inside the straight chord between $(y_{\text{bot}}, R_{\text{bot}})$ and $(y_{\text{top}}, R_{\text{top}})$:
   $$T_{\text{min}} = t_{\text{wall}} + \Delta_{\text{out}} + \Delta_{\text{in}} + \text{profile\_bow}_{\max} + R_{o,\max}(\sec\theta - 1)$$
-  - **Error if $T_{\text{stock}} < T_{\text{min}}$:** Highlight the exact height $y$ where the stave will run thin or expose a gap during turning.
+  - **Error if $T\_{\text{stock}} < T\_{\text{min}}$:** Highlight the exact height $y$ where the stave will run thin or expose a gap during turning.
 
 ---
 
@@ -143,8 +159,8 @@ export type VesselMode = 'closed' | 'open' | 'stave';
 
 export interface ProfilePoint {
   id: string;
-  r: number;        // radius in canonical inches
-  y: number;        // height from base in canonical inches
+  r: number; // radius in canonical inches
+  y: number; // height from base in canonical inches
   handleIn: { dr: number; dy: number };
   handleOut: { dr: number; dy: number };
 }
@@ -152,20 +168,20 @@ export interface ProfilePoint {
 export interface WoodSpecies {
   id: string;
   name: string;
-  colorHex: string;         // display/3D base color
-  secondaryHex: string;     // subtle grain accent
+  colorHex: string; // display/3D base color
+  secondaryHex: string; // subtle grain accent
   costPerBoardFoot?: number;
 }
 
 export interface RingConfig {
   id: string;
-  index: number;            // 0 = base disk, 1..M = rings
+  index: number; // 0 = base disk, 1..M = rings
   isBaseDisk: boolean;
-  height: number;           // inches
-  segments: number;         // N
-  mode: 'closed' | 'open';  // per-ring override supported
-  gapDegrees: number;       // used when mode === 'open'
-  rotationOffsetDeg: number;// half-segment brick stagger by default: 180 / N
+  height: number; // inches
+  segments: number; // N
+  mode: 'closed' | 'open'; // per-ring override supported
+  gapDegrees: number; // used when mode === 'open'
+  rotationOffsetDeg: number; // half-segment brick stagger by default: 180 / N
   speciesPattern: string[]; // array of WoodSpecies.id cycled around the ring
 }
 
@@ -175,14 +191,14 @@ export interface StaveTierConfig {
   yBottom: number;
   yTop: number;
   staveCount: number;
-  stockThickness: number;   // actual milled lumber thickness
+  stockThickness: number; // actual milled lumber thickness
   speciesPattern: string[];
 }
 
 export interface ShopSettings {
   unit: UnitSystem;
   fractionPrecision: FractionPrecision;
-  sawKerf: number;          // e.g. 0.125" (1/8") or 0.094" (3/32" thin-kerf)
+  sawKerf: number; // e.g. 0.125" (1/8") or 0.094" (3/32" thin-kerf)
   endTrimAllowance: number; // default 1.0" per strip
   turningAllowanceOut: number;
   turningAllowanceIn: number;
@@ -214,6 +230,7 @@ export interface VesselProject {
 ```
 
 ### 3.2 Persistence & Portability
+
 - **Auto-save:** Debounced write to `localStorage` (`segmentor.projects.v1` + `segmentor.activeProjectId`).
 - **Project switcher:** Create new from preset, duplicate, rename, delete.
 - **Portable JSON:** Export/import `.segmentor.json` files with strict schema validation and migration hooks (`schemaVersion`).
@@ -263,6 +280,7 @@ Navigation uses a compact, mobile-friendly top/bottom bar so all 5 workspace vie
 Matches the **Would? By Marty** visual identity (`mkokes/wouldbymarty`): Cream & Oak in light mode, Walnut in dark mode, with tactile paper/wood-grain texture.
 
 ### 5.1 Color Tokens (`src/styles/tokens.css`)
+
 - **Light Mode (Cream & Oak):**
   - `--bg: #f6efe4` (page canvas)
   - `--bg-alt: #efe4d3` (recessed panels, footer)
@@ -285,6 +303,7 @@ Matches the **Would? By Marty** visual identity (`mkokes/wouldbymarty`): Cream &
   - `--status-danger`: `#a82c24` (light) / `#f07b72` (dark)
 
 ### 5.2 Typography, Texture & Theme Behavior
+
 - **Fonts:**
   - `--font-display: 'Chango', sans-serif` — app wordmark
   - `--font-serif: 'Fraunces', Georgia, serif` — view & section headings
@@ -339,6 +358,7 @@ segmentor/
 ```
 
 ### Quality Gates (`npm run check`)
+
 1. `npm run format:check` (`oxfmt`)
 2. `npm run lint` (`oxlint`, 0 errors)
 3. `npm run typecheck` (`tsc -b`)
@@ -371,12 +391,14 @@ segmentor/
   - Dogfood on mobile viewport + desktop; verify print scaling; configure `.github/workflows/deploy.yml` and push live.
 
 ### Phase 2 — Patterning & Advanced Shop Tools (Post-MVP)
+
 - **Feature-Ring & Pattern Designer:** Visual per-segment painter for spirals, chevrons, diamonds, and zig-zag wraps across rings.
 - **Compound Lamination Planner:** Strip-lamination calculator for woven/Celtic-knot/tumbling-block feature rings.
 - **Stock Bin-Packing Optimizer:** Map required strips onto actual rough-lumber board lengths you have on hand.
 - **1:1 Wedgie-Sled Templates:** Printable angle wedges for common segment counts ($8, 12, 16, 18, 24, 36$).
 
 ### Phase 3 — Ecosystem & Sharing
+
 - Custom wood species library with procedural wood-grain textures in 3D view.
 - Shareable URL-encoded vessel links (`#project=...`) for sharing designs in forums/clubs.
 - Optional DXF/SVG export for laser-cut open-segment indexing plates and story sticks.
