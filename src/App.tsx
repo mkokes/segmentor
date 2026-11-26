@@ -1,119 +1,280 @@
-import { useMemo } from 'react';
+import {
+  Box,
+  CheckSquare,
+  Download,
+  FolderOpen,
+  Layers,
+  PenTool,
+  Plus,
+  Table2,
+  Trash2,
+  Upload,
+} from 'lucide-react';
+import { lazy, Suspense, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { ThemeToggle } from './components/common/ThemeToggle';
-import { calculateClosedRing } from './geometry/closedRing';
-import { calculateOpenRing } from './geometry/openRing';
-import { buildProfileSampler } from './geometry/spline';
-import { calculateStaveTier } from './geometry/stave';
-import { formatAngle, formatDimension } from './geometry/units';
-import type { ProfilePoint, ShopSettings } from './types/vessel';
+import { CrossSectionView } from './components/CrossSectionView';
+import { CutSheetView } from './components/CutSheetView';
+import { ProfileEditor } from './components/ProfileEditor';
+import { ShopModeView } from './components/ShopModeView';
+import { evaluateVessel } from './geometry/vesselMetrics';
+import { useVesselStore } from './state/useVesselStore';
 
-const SAMPLE_BOWL: ProfilePoint[] = [
-  { id: 'p0', r: 2.25, y: 0, handleIn: { dr: 0, dy: 0 }, handleOut: { dr: 1.2, dy: 0.8 } },
-  { id: 'p1', r: 4.75, y: 4.0, handleIn: { dr: -0.4, dy: -1.4 }, handleOut: { dr: 0, dy: 0 } },
-];
+const Vessel3DView = lazy(() =>
+  import('./components/Vessel3DView').then((m) => ({ default: m.Vessel3DView })),
+);
 
-const SAMPLE_SETTINGS: ShopSettings = {
-  unit: 'in',
-  displayMode: 'fraction',
-  fractionPrecision: 32,
-  sawKerf: 0.125,
-  endTrimAllowance: 1,
-  turningAllowanceOut: 0.125,
-  turningAllowanceIn: 0.125,
-  wallThickness: 0.45,
-  baseThickness: 0.5,
-};
+type ActiveTab = 'profile' | 'rings' | '3d' | 'cutsheet' | 'shop';
 
 export function App() {
-  const summary = useMemo(() => {
-    const sampler = buildProfileSampler(SAMPLE_BOWL, SAMPLE_SETTINGS);
-    const closed = calculateClosedRing(
-      {
-        id: 'r1',
-        index: 1,
-        isBaseDisk: false,
-        height: 0.75,
-        segments: 16,
-        mode: 'closed',
-        gapDegrees: 0,
-        rotationOffsetDeg: 11.25,
-        speciesPattern: ['walnut', 'maple'],
-      },
-      1.0,
-      sampler,
-      SAMPLE_SETTINGS,
-    );
-    const open = calculateOpenRing(
-      {
-        id: 'r2',
-        index: 2,
-        isBaseDisk: false,
-        height: 0.75,
-        segments: 18,
-        mode: 'open',
-        gapDegrees: 5,
-        rotationOffsetDeg: 10,
-        speciesPattern: ['cherry'],
-      },
-      1.75,
-      sampler,
-      SAMPLE_SETTINGS,
-    );
-    const stave = calculateStaveTier(
-      {
-        id: 's1',
-        index: 1,
-        yBottom: 0.5,
-        yTop: 4.0,
-        staveCount: 12,
-        stockThickness: 1.25,
-        speciesPattern: ['walnut'],
-      },
-      sampler,
-      SAMPLE_SETTINGS,
-    );
-    return { closed, open, stave };
-  }, []);
+  const store = useVesselStore();
+  const [activeTab, setActiveTab] = useState<ActiveTab>('profile');
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const project = store.activeProject;
+  const evaluated = useMemo(() => evaluateVessel(project), [project]);
+
+  const issueCount = evaluated.errorCount + evaluated.warningCount;
+
+  const cycleUnitDisplay = () => {
+    const { unit, displayMode } = project.settings;
+    if (unit === 'in' && displayMode === 'fraction') {
+      store.updateSettings({ unit: 'in', displayMode: 'decimal' });
+    } else if (unit === 'in' && displayMode === 'decimal') {
+      store.updateSettings({ unit: 'mm', displayMode: 'decimal' });
+    } else {
+      store.updateSettings({ unit: 'in', displayMode: 'fraction' });
+    }
+  };
+
+  const unitButtonLabel =
+    project.settings.unit === 'mm'
+      ? 'mm'
+      : project.settings.displayMode === 'fraction'
+        ? 'in (frac)'
+        : 'in (dec)';
+
+  const handleExportJson = () => {
+    const blob = new Blob([JSON.stringify(project, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.name.toLowerCase().replaceAll(/\s+/g, '-')}.segmentor.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    store.importProjectJson(text);
+    e.target.value = '';
+    setProjectMenuOpen(false);
+  };
 
   return (
     <>
-      <header className="app-header">
+      <header className="app-header no-print">
         <div className="brand">
           <span className="brand__title">Segmentor</span>
-          <span className="brand__tag">Woodturning Studio</span>
+          <span className="brand__tag">Would? By Marty</span>
         </div>
-        <ThemeToggle />
+
+        <div className="header-actions">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => setProjectMenuOpen((v) => !v)}
+            aria-expanded={projectMenuOpen}
+          >
+            <FolderOpen size={15} />
+            <span className="project-name-pill">{project.name}</span>
+          </button>
+
+          <button
+            type="button"
+            className="chip mono"
+            title="Switch display units"
+            onClick={cycleUnitDisplay}
+          >
+            {unitButtonLabel}
+          </button>
+
+          <ThemeToggle />
+        </div>
       </header>
 
-      <main className="app-main">
-        <section className="panel">
-          <h1 className="panel__heading">Geometry Kernel Ready (M1)</h1>
-          <p className="panel__sub">
-            Closed-ring, open-ring, and compound stave math verified. Interactive Profile,
-            Cross-Section, 3D Preview, Cut Sheet, and Shop Mode views build next.
-          </p>
-
-          <div className="stat-grid">
-            <div className="stat-card">
-              <div className="stat-card__label">16-Seg Closed Miter</div>
-              <div className="stat-card__value">{formatAngle(summary.closed.miterAngleDeg)}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card__label">Closed SEL</div>
-              <div className="stat-card__value">
-                {formatDimension(summary.closed.segmentEdgeLength, 'in', 'fraction', 32)}
+      {projectMenuOpen && (
+        <div className="project-drawer no-print">
+          <div className="project-drawer__inner panel">
+            <div className="panel__header-row">
+              <div className="field" style={{ flex: 1, maxWidth: '340px' }}>
+                <span>Active Vessel Name</span>
+                <input
+                  type="text"
+                  value={project.name}
+                  onChange={(e) => store.renameProject(e.target.value)}
+                />
+              </div>
+              <div className="chip-row">
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => store.duplicateActiveProject()}
+                >
+                  <Plus size={14} /> Duplicate
+                </button>
+                <button type="button" className="btn btn--ghost" onClick={handleExportJson}>
+                  <Download size={14} /> Export JSON
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload size={14} /> Import JSON
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  className="visually-hidden"
+                  onChange={handleImportFile}
+                />
               </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-card__label">18-Seg Open Miter (5° gap)</div>
-              <div className="stat-card__value">{formatAngle(summary.open.miterAngleDeg)}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card__label">12-Stave Compound Bevel</div>
-              <div className="stat-card__value">{formatAngle(summary.stave.bevelAngleDeg)}</div>
+
+            <div className="saved-projects">
+              {store.projects.map((p) => (
+                <div
+                  key={p.id}
+                  className={`saved-project-row ${p.id === project.id ? 'is-active' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className="saved-project-row__btn"
+                    onClick={() => {
+                      store.selectProject(p.id);
+                      setProjectMenuOpen(false);
+                    }}
+                  >
+                    <strong>{p.name}</strong>
+                    <span className="hint-text">{p.mode.toUpperCase()}</span>
+                  </button>
+                  {store.projects.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn btn--danger-ghost"
+                      aria-label={`Delete ${p.name}`}
+                      onClick={() => store.deleteProject(p.id)}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-        </section>
+        </div>
+      )}
+
+      <nav className="app-nav no-print" aria-label="Workspace Views">
+        <div className="app-nav__inner">
+          <button
+            type="button"
+            className={`nav-tab ${activeTab === 'profile' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('profile')}
+          >
+            <PenTool size={16} />
+            <span>Profile</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-tab ${activeTab === 'rings' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('rings')}
+          >
+            <Layers size={16} />
+            <span>{project.mode === 'stave' ? 'Staves' : 'Rings'}</span>
+            {issueCount > 0 && (
+              <span
+                className={`badge ${evaluated.errorCount > 0 ? 'badge--error' : 'badge--warn'}`}
+              >
+                {issueCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`nav-tab ${activeTab === '3d' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('3d')}
+          >
+            <Box size={16} />
+            <span>3D</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-tab ${activeTab === 'cutsheet' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('cutsheet')}
+          >
+            <Table2 size={16} />
+            <span>Cut Sheet</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-tab ${activeTab === 'shop' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('shop')}
+          >
+            <CheckSquare size={16} />
+            <span>Shop</span>
+          </button>
+        </div>
+      </nav>
+
+      <main className="app-main">
+        {activeTab === 'profile' && (
+          <ProfileEditor
+            project={project}
+            evaluated={evaluated}
+            onSetMode={store.setMode}
+            onUpdateProfilePoints={store.updateProfilePoints}
+            onUpdateSettings={store.updateSettings}
+            onLoadPreset={(presetId) => store.createProjectFromPreset(presetId)}
+          />
+        )}
+
+        {activeTab === 'rings' && (
+          <CrossSectionView
+            project={project}
+            evaluated={evaluated}
+            onUpdateRing={store.updateRing}
+            onAddRing={store.addRing}
+            onRemoveRing={store.removeRing}
+            onDistributeHeights={store.distributeRingHeights}
+            onApplyBrickStagger={store.applyBrickStagger}
+            onUpdateStaveTier={store.updateStaveTier}
+            onAddStaveTier={store.addStaveTier}
+            onRemoveStaveTier={store.removeStaveTier}
+          />
+        )}
+
+        {activeTab === '3d' && (
+          <Suspense fallback={<div className="panel">Loading 3D preview…</div>}>
+            <Vessel3DView project={project} evaluated={evaluated} />
+          </Suspense>
+        )}
+
+        {activeTab === 'cutsheet' && <CutSheetView project={project} evaluated={evaluated} />}
+
+        {activeTab === 'shop' && (
+          <ShopModeView
+            project={project}
+            evaluated={evaluated}
+            onToggleProgress={store.toggleProgress}
+          />
+        )}
       </main>
     </>
   );
