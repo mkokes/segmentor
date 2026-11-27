@@ -80,7 +80,9 @@ export function App() {
       <header className="app-header no-print">
         <div className="brand">
           <span className="brand__title">Segmentor</span>
-          <span className="brand__tag">Would? By Marty</span>
+          <a className="brand__tag" href="https://wouldbymarty.com/">
+            Would? By Marty
+          </a>
         </div>
 
         <div className="header-actions">

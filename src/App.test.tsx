@@ -10,6 +10,10 @@ describe('App navigation & views', () => {
   it('renders Segmentor workspace and switches across Profile, Rings, Cut Sheet, and Shop Mode', () => {
     render(<App />);
     expect(screen.getByText('Segmentor')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Would? By Marty' })).toHaveAttribute(
+      'href',
+      'https://wouldbymarty.com/',
+    );
     expect(screen.getByText('Vessel Profile')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^Rings$/i }));

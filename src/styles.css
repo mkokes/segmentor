@@ -173,6 +173,12 @@ input:disabled {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--link);
+  text-decoration: none;
+}
+
+.brand__tag:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .header-actions {
